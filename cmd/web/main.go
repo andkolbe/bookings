@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/akolbe/bookings/pkg/config"
-	"github.com/akolbe/bookings/pkg/handlers"
-	"github.com/akolbe/bookings/pkg/render"
+	"github.com/andkolbe/bookings/pkg/config"
+	"github.com/andkolbe/bookings/pkg/handlers"
+	"github.com/andkolbe/bookings/pkg/render"
 	"github.com/alexedwards/scs/v2"
 )
 

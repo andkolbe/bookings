@@ -3,9 +3,9 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/akolbe/bookings/pkg/config"
-	"github.com/akolbe/bookings/pkg/models"
-	"github.com/akolbe/bookings/pkg/render"
+	"github.com/andkolbe/bookings/pkg/config"
+	"github.com/andkolbe/bookings/pkg/models"
+	"github.com/andkolbe/bookings/pkg/render"
 )
 
 // the repository used by the handlers

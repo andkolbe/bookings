@@ -1,4 +1,4 @@
-module github.com/akolbe/bookings
+module github.com/andkolbe/bookings
 
 go 1.16
 

@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/akolbe/bookings/pkg/config"
-	"github.com/akolbe/bookings/pkg/models"
+	"github.com/andkolbe/bookings/pkg/config"
+	"github.com/andkolbe/bookings/pkg/models"
 )
 
 // a FuncMap is a map of functions that can be used in a template
