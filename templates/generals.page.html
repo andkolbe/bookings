@@ -2,68 +2,68 @@
 
 {{define "content"}}
 
-    <div class="container">
+<div class='container'>
 
 
-        <div class="row">
-            <div class="col">
-                <img src="/static/images/generals-quarters.png"
-                     class="img-fluid img-thumbnail mx-auto d-block room-image" alt="room image">
-            </div>
+    <div class='row'>
+        <div class='col'>
+            <img src='/static/images/generals-quarters.png' class='img-fluid img-thumbnail mx-auto d-block room-image'
+                alt='room image'>
         </div>
-
-
-        <div class="row">
-            <div class="col">
-                <h1 class="text-center mt-4">General's Quarters</h1>
-                <p>
-                    Your home away form home, set on the majestic waters of the Atlantic Ocean, this will be a vacation
-                    to remember.
-                    Your home away form home, set on the majestic waters of the Atlantic Ocean, this will be a vacation
-                    to remember.
-                    Your home away form home, set on the majestic waters of the Atlantic Ocean, this will be a vacation
-                    to remember.
-                    Your home away form home, set on the majestic waters of the Atlantic Ocean, this will be a vacation
-                    to remember.
-                    Your home away form home, set on the majestic waters of the Atlantic Ocean, this will be a vacation
-                    to remember.
-                    Your home away form home, set on the majestic waters of the Atlantic Ocean, this will be a vacation
-                    to remember.
-                </p>
-            </div>
-        </div>
-
-
-        <div class="row">
-
-            <div class="col text-center">
-
-                <a id="check-availability-button" href="#!" class="btn btn-success">Check Availability</a>
-
-            </div>
-        </div>
-
-
-
-
     </div>
+
+
+    <div class='row'>
+        <div class='col'>
+            <h1 class='text-center mt-4'>General's Quarters</h1>
+            <p>
+                Your home away form home, set on the majestic waters of the Atlantic Ocean, this will be a vacation
+                to remember.
+                Your home away form home, set on the majestic waters of the Atlantic Ocean, this will be a vacation
+                to remember.
+                Your home away form home, set on the majestic waters of the Atlantic Ocean, this will be a vacation
+                to remember.
+                Your home away form home, set on the majestic waters of the Atlantic Ocean, this will be a vacation
+                to remember.
+                Your home away form home, set on the majestic waters of the Atlantic Ocean, this will be a vacation
+                to remember.
+                Your home away form home, set on the majestic waters of the Atlantic Ocean, this will be a vacation
+                to remember.
+            </p>
+        </div>
+    </div>
+
+
+    <div class='row'>
+
+        <div class='col text-center'>
+
+            <a id='check-availability-button' href='#!' class='btn btn-success'>Check Availability</a>
+
+        </div>
+    </div>
+
+
+
+
+</div>
 
 {{end}}
 
 
 {{define "js"}}
 <script>
-    document.getElementById("check-availability-button").addEventListener("click", function () {
+    document.getElementById('check-availability-button').addEventListener('click', function () {
         let html = `
-        <form id="check-availability-form" action="" method="post" novalidate class="needs-validation">
-            <div class="form-row">
-                <div class="col">
-                    <div class="form-row" id="reservation-dates-modal">
-                        <div class="col">
-                            <input disabled required class="form-control" type="text" name="start" id="start" placeholder="Arrival">
+        <form id='check-availability-form' action=' method='post' novalidate class='needs-validation'>
+            <div class='form-row'>
+                <div class='col'>
+                    <div class='form-row' id='reservation-dates-modal'>
+                        <div class='col'>
+                            <input disabled required class='form-control' type='text' name='start' id='start' placeholder='Arrival'>
                         </div>
-                        <div class="col">
-                            <input disabled required class="form-control" type="text" name="end" id="end" placeholder="Departure">
+                        <div class='col'>
+                            <input disabled required class='form-control' type='text' name='end' id='end' placeholder='Departure'>
                         </div>
 
                     </div>
@@ -74,6 +74,41 @@
         attention.custom({
             title: 'Choose your dates',
             msg: html,
+
+            willOpen: () => {
+                const elem = document.getElementById('reservation-dates-modal');
+                const rp = new DateRangePicker(elem, {
+                    format: 'yyyy-mm-dd',
+                    showOnFocus: true,
+                })
+            },
+
+            didOpen: () => {
+                document.getElementById('start').removeAttribute('disabled');
+                document.getElementById('end').removeAttribute('disabled');
+            },
+
+            // run the result of this callback if all the if statements pass
+            callback: function (result) {
+                console.log('called')
+
+                // get the form and store the reference in a variable
+                let form = document.getElementById('check-availability-form')
+                // create a variable that contains all the inputs stored in the form
+                let formData = new FormData(form)
+                formData.append('csrf_token', "{{.CSRFToken}}") // append csrf token to our post request
+
+                fetch('/search-availability-json', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.json()) //convert the response into JSON
+                    .then(data => {
+                        console.log(data)
+                        console.log(data.ok)
+                        console.log(data.message)
+                    })
+            }
         });
     })
 </script>
