@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/andkolbe/bookings/internal/config"
+	"github.com/andkolbe/bookings/internal/forms"
 	"github.com/andkolbe/bookings/internal/models"
 	"github.com/andkolbe/bookings/internal/render"
 )
@@ -57,7 +58,53 @@ func (m *Repository) About(w http.ResponseWriter, r *http.Request) {
 
 // reservation page handler
 func (m *Repository) Reservation(w http.ResponseWriter, r *http.Request) {
-	render.RenderTemplate(w, r, "make-reservation.page.html", &models.TemplateData{})
+	// create an empty reservation for the first time this page is displayed
+	var emptyReservation models.Reservation
+	// store in a data variable
+	data := make(map[string]interface{})
+	data["reservation"] = emptyReservation
+
+	render.RenderTemplate(w, r, "make-reservation.page.html", &models.TemplateData{
+		// pass an empty form and the data variable to the template
+		Form: forms.New(nil),
+		Data: data,
+	})
+}
+
+// POST reservation page handler
+func (m *Repository) PostReservation(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		log.Println(err) // log an error if we have one
+		return
+	}
+
+	// store incoming reservation data that a user submitted in a variable
+	reservation := models.Reservation{
+		FirstName: r.Form.Get("first_name"),
+		LastName:  r.Form.Get("last_name"),
+		Email:     r.Form.Get("email"),
+		Phone:     r.Form.Get("phone"),
+	}
+
+	// create a new form
+	form := forms.New(r.PostForm) // PostForm has all of the url values and their associated data
+
+	// check if the incoming form has all of the fields filled out
+	form.Required("first_name", "last_name", "email", "phone")
+	form.MinLength("first_name", 3, r)
+	form.IsEmail("email")
+
+	if !form.Valid() {
+		data := make(map[string]interface{})
+		data["reservation"] = reservation
+
+		render.RenderTemplate(w, r, "make-reservation.page.html", &models.TemplateData{
+			Form: form,
+			Data: data,
+		})
+		return
+	}
 }
 
 // generals room page handler
