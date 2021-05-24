@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/andkolbe/bookings/internal/config"
 	"github.com/andkolbe/bookings/internal/handlers"
+	"github.com/andkolbe/bookings/internal/helpers"
 	"github.com/andkolbe/bookings/internal/models"
 	"github.com/andkolbe/bookings/internal/render"
 )
@@ -19,8 +21,9 @@ import (
 const portNumber = ":8080"
 
 var app config.AppConfig
-
 var session *scs.SessionManager
+var infoLog *log.Logger
+var errorLog *log.Logger
 
 // main is the main application function
 func main() {
@@ -33,7 +36,7 @@ func main() {
 	// _ = http.ListenAndServe(portNumber, nil)
 
 	srv := &http.Server{
-		Addr: portNumber,
+		Addr:    portNumber,
 		Handler: routes(&app),
 	}
 
@@ -47,6 +50,12 @@ func run() error {
 
 	// change this to true when in production
 	app.InProduction = false
+
+	// print these to the terminal
+	infoLog = log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
+	app.InfoLog = infoLog
+	errorLog = log.New(os.Stdout, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+	app.ErrorLog = errorLog
 
 	session = scs.New()
 	session.Lifetime = 24 * time.Hour
@@ -63,13 +72,13 @@ func run() error {
 	}
 
 	app.TemplateCache = tc
-	app.UseCache  = false
+	app.UseCache = false
 
 	repo := handlers.NewRepo(&app)
 	handlers.NewHandlers(repo)
-
 	// gives the render component of our app access to the app config variable
 	render.NewTemplates(&app)
+	helpers.NewHelpers(&app)
 
 	return nil
 }
