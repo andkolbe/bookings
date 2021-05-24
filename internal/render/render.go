@@ -2,9 +2,9 @@ package render
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"path/filepath"
 
@@ -18,6 +18,7 @@ import (
 var functions = template.FuncMap{}
 
 var app *config.AppConfig
+var pathToTemplates = "./templates"
 
 // sets the config for the template package
 func NewTemplates(a *config.AppConfig) {
@@ -25,12 +26,16 @@ func NewTemplates(a *config.AppConfig) {
 }
 
 func AddDefaultData(td *models.TemplateData, r *http.Request) *models.TemplateData {
+	// flash messages appear once and then are automatically taken out of the session
+	td.Flash = app.Session.PopString(r.Context(), "flash") // PopString puts something in our session and then removes it when we navigate away from the page
+	td.Error = app.Session.PopString(r.Context(), "error")
+	td.Warning = app.Session.PopString(r.Context(), "warning") 
 	td.CSRFToken = nosurf.Token(r)
 	return td
 }
 
 // renders templates using html/template
-func RenderTemplate(w http.ResponseWriter, r *http.Request, html string, td *models.TemplateData) {
+func RenderTemplate(w http.ResponseWriter, r *http.Request, html string, td *models.TemplateData) error {
 	// in dev mode, don't use the template cache, instead rebuild it on every request
 	var tc map[string]*template.Template
 
@@ -46,7 +51,7 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, html string, td *mod
 
 	t, ok := tc[html] // if we get past this, then we have the template we want to use
 	if !ok {
-		log.Fatal("Could not get template from template cache")
+		return errors.New("Can't get template from cache")
 	}
 
 	buf := new(bytes.Buffer)
@@ -58,7 +63,9 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, html string, td *mod
 	_, err := buf.WriteTo(w)
 	if err != nil {
 		fmt.Println("Error writing template to browser", err)
+		return err
 	}
+	return nil
 
 }
 
@@ -67,7 +74,7 @@ func CreateTemplateCache() (map[string]*template.Template, error) {
 	myCache := map[string]*template.Template{} // map with an index of type string and its contents are a pointer to template.Template
 
 	// go to the templates folder, and get all of the files that start with anything but end with .page.html
-	pages, err := filepath.Glob("./templates/*.page.html")
+	pages, err := filepath.Glob(fmt.Sprintf("%s/*.page.html", pathToTemplates))
 	if err != nil {
 		return myCache, err
 	}
@@ -81,7 +88,7 @@ func CreateTemplateCache() (map[string]*template.Template, error) {
 		}
 
 		// go to the templates folder, and get all of the files that end with .layout.html
-		matches, err := filepath.Glob("./templates/*.layout.html")
+		matches, err := filepath.Glob(fmt.Sprintf("%s/*.layout.html", pathToTemplates))
 		if err != nil {
 			return myCache, err
 
@@ -89,7 +96,7 @@ func CreateTemplateCache() (map[string]*template.Template, error) {
 
 		// if a .layout.html match is found, the length will be greater than 0
 		if len(matches) > 0 {
-			ts, err = ts.ParseGlob("./templates/*.layout.html")
+			ts, err = ts.ParseGlob(fmt.Sprintf("%s/*.layout.html", pathToTemplates))
 			if err != nil {
 				return myCache, err
 

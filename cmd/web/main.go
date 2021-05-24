@@ -3,15 +3,17 @@
 package main
 
 import (
+	"encoding/gob"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/alexedwards/scs/v2"
 	"github.com/andkolbe/bookings/internal/config"
 	"github.com/andkolbe/bookings/internal/handlers"
+	"github.com/andkolbe/bookings/internal/models"
 	"github.com/andkolbe/bookings/internal/render"
-	"github.com/alexedwards/scs/v2"
 )
 
 const portNumber = ":8080"
@@ -22,6 +24,26 @@ var session *scs.SessionManager
 
 // main is the main application function
 func main() {
+	err := run()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(fmt.Sprintf("Starting application on port %s", portNumber))
+	// _ = http.ListenAndServe(portNumber, nil)
+
+	srv := &http.Server{
+		Addr: portNumber,
+		Handler: routes(&app),
+	}
+
+	err = srv.ListenAndServe()
+	log.Fatal(err)
+}
+
+func run() error {
+	// what I am going to put in the session
+	gob.Register(models.Reservation{})
 
 	// change this to true when in production
 	app.InProduction = false
@@ -37,6 +59,7 @@ func main() {
 	tc, err := render.CreateTemplateCache()
 	if err != nil {
 		log.Fatal("cannot create template cache")
+		return err
 	}
 
 	app.TemplateCache = tc
@@ -48,14 +71,5 @@ func main() {
 	// gives the render component of our app access to the app config variable
 	render.NewTemplates(&app)
 
-	fmt.Println(fmt.Sprintf("Starting application on port %s", portNumber))
-	// _ = http.ListenAndServe(portNumber, nil)
-
-	srv := &http.Server{
-		Addr: portNumber,
-		Handler: routes(&app),
-	}
-
-	err = srv.ListenAndServe()
-	log.Fatal(err)
+	return nil
 }

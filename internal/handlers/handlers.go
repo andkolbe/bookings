@@ -91,8 +91,8 @@ func (m *Repository) PostReservation(w http.ResponseWriter, r *http.Request) {
 	form := forms.New(r.PostForm) // PostForm has all of the url values and their associated data
 
 	// check if the incoming form has all of the fields filled out
-	form.Required("first_name", "last_name", "email", "phone")
-	form.MinLength("first_name", 3, r)
+	form.Required("first_name", "last_name", "email")
+	form.MinLength("first_name", 3)
 	form.IsEmail("email")
 
 	if !form.Valid() {
@@ -105,6 +105,12 @@ func (m *Repository) PostReservation(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	m.App.Session.Put(r.Context(), "reservation", reservation)
+
+	// redirect the user to a different page after submitting the form so they can't click the submut button twice
+	// StatusSeeOther is response code 303
+	http.Redirect(w, r, "/reservation-summary", http.StatusSeeOther)
 }
 
 // generals room page handler
@@ -158,4 +164,24 @@ func (m *Repository) AvailabilityJSON(w http.ResponseWriter, r *http.Request) {
 // contact page handler
 func (m *Repository) Contact(w http.ResponseWriter, r *http.Request) {
 	render.RenderTemplate(w, r, "contact.page.html", &models.TemplateData{})
+}
+
+func (m *Repository) ReservationSummary(w http.ResponseWriter, r *http.Request) {
+	reservation, ok := m.App.Session.Get(r.Context(), "reservation").(models.Reservation)
+	// if it finds something called reservation in the session and it manages to assert it to type models.Reservation, ok will be true
+	if !ok {
+		log.Println("cannot get item from session")
+		m.App.Session.Put(r.Context(), "error", "Can't get reservation from session")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect) // redirect them to the home page 
+		return
+	}
+
+	m.App.Session.Remove(r.Context(), "reservation")
+
+	data := make(map[string]interface{})
+	data["reservation"] = reservation
+
+ 	render.RenderTemplate(w, r, "reservation-summary.page.html", &models.TemplateData{
+		 Data: data,
+	 })
 }

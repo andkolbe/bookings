@@ -139,8 +139,8 @@
 
         function notify(msg, msgType) {
             notie.alert({
-                type: msgType,
                 text: msg,
+                type: msgType,
             })
         }
 
@@ -152,6 +152,19 @@
                 confirmButtonText: confirmationButtonText
             })
         }
+
+        // {{with .Error}} // if you have a value in error that is not empty, do this with it
+        // // when someone comes to a page and I want to display an error message
+        // notify("{{.}}", "error")
+        // {{end}}
+
+        // {{with .Flash}} 
+        // notify("{{.}}", "flash")
+        // {{end}}
+
+        // {{with .Warning}} 
+        // notify("{{.}}", "warning")
+        // {{end}}
 
         function Prompt() {
             let toast = function (c) {
