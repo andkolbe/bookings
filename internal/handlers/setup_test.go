@@ -61,7 +61,7 @@ func getRoutes() http.Handler {
 	NewHandlers(repo)
 
 	// gives the render component of our app access to the app config variable
-	render.NewTemplates(&app)
+	render.NewRenderer(&app)
 
 	mux := chi.NewRouter()
 

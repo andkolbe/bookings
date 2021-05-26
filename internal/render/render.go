@@ -21,7 +21,7 @@ var app *config.AppConfig
 var pathToTemplates = "./templates"
 
 // sets the config for the template package
-func NewTemplates(a *config.AppConfig) {
+func NewRenderer(a *config.AppConfig) {
 	app = a
 }
 
@@ -35,7 +35,7 @@ func AddDefaultData(td *models.TemplateData, r *http.Request) *models.TemplateDa
 }
 
 // renders templates using html/template
-func RenderTemplate(w http.ResponseWriter, r *http.Request, html string, td *models.TemplateData) error {
+func Template(w http.ResponseWriter, r *http.Request, html string, td *models.TemplateData) error {
 	// in dev mode, don't use the template cache, instead rebuild it on every request
 	var tc map[string]*template.Template
 
