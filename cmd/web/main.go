@@ -32,7 +32,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.SQL.Close() // putting this line here makse sure the db connection won't close until the main functino stops running
+	defer db.SQL.Close() // putting this line here makse sure the db connection won't close until the main function stops running
+
+	defer close(app.MailChan)
+	fmt.Println("Starting mail listener...")
+	listenForMail()
 
 	fmt.Println(fmt.Sprintf("Starting application on port %s", portNumber))
 	// _ = http.ListenAndServe(portNumber, nil)
@@ -52,6 +56,10 @@ func run() (*driver.DB, error) {
 	gob.Register(models.User{})
 	gob.Register(models.Room{})
 	gob.Register(models.Restriction{})
+
+	// create a channel that will be available to all parts of the app. It listens for a data type of models.MailData
+	mailChan := make(chan models.MailData)
+	app.MailChan = mailChan
 
 	// change this to true when in production
 	app.InProduction = false

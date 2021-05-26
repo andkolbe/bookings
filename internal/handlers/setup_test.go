@@ -49,6 +49,12 @@ func TestMain(m *testing.M) {
 	// store the session in a variable
 	app.Session = session
 
+	mailChan := make(chan models.MailData)
+	app.MailChan = mailChan
+	defer close(mailChan)
+
+	listenForMail()
+
 	// create template cache
 	tc, err := CreateTestTemplateCache()
 	if err != nil {
@@ -65,6 +71,15 @@ func TestMain(m *testing.M) {
 	render.NewRenderer(&app)
 
 	os.Exit(m.Run())
+}
+
+func listenForMail() {
+	// same as what we do in our live app but we skip the sending of mail
+	go func() {
+		for {
+			_ = <- app.MailChan
+		}
+	}()
 }
 
 func getRoutes() http.Handler {
