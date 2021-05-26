@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/andkolbe/bookings/internal/config"
@@ -15,7 +16,6 @@ import (
 	"github.com/andkolbe/bookings/internal/render"
 	"github.com/andkolbe/bookings/internal/repository"
 	"github.com/andkolbe/bookings/internal/repository/dbrepo"
-	"github.com/go-chi/chi/v5"
 )
 
 // the repository used by the handlers
@@ -34,6 +34,13 @@ func NewRepo(a *config.AppConfig, db *driver.DB) *Repository {
 	return &Repository{
 		App: a,
 		DB:  dbrepo.NewPostgresRepo(db.SQL, a),
+	}
+}
+
+func NewTestRepo(a *config.AppConfig) *Repository {
+	return &Repository{
+		App: a,
+		DB:  dbrepo.NewTestingRepo(a),
 	}
 }
 
@@ -58,13 +65,16 @@ func (m *Repository) About(w http.ResponseWriter, r *http.Request) {
 func (m *Repository) Reservation(w http.ResponseWriter, r *http.Request) {
 	res, ok := m.App.Session.Get(r.Context(), "reservation").(models.Reservation)
 	if !ok {
-		helpers.ServerError(w, errors.New("cannot get reservation from session"))
+		m.App.Session.Put(r.Context(), "error", "can't get reservation from session")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 
+	// get the room id off of the session and check if it is valid
 	room, err := m.DB.GetRoomByID(res.RoomID)
 	if err != nil {
-		helpers.ServerError(w, err)
+		m.App.Session.Put(r.Context(), "error", "can't find room")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -103,7 +113,8 @@ func (m *Repository) PostReservation(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
 	if err != nil {
-		helpers.ServerError(w, err)
+		m.App.Session.Put(r.Context(), "error", "can't parse form!")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -121,6 +132,7 @@ func (m *Repository) PostReservation(w http.ResponseWriter, r *http.Request) {
 	form.MinLength("first_name", 3)
 	form.IsEmail("email")
 
+	// if one of the fields on the form is not valid, repopulate the form with the data they entered and display the error message where it needs to be
 	if !form.Valid() {
 		data := make(map[string]interface{})
 		data["reservation"] = reservation
@@ -132,10 +144,11 @@ func (m *Repository) PostReservation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// save data to db
+	// save data to db and get a reservation back
 	newReservationID, err := m.DB.InsertReservation(reservation)
 	if err != nil {
-		helpers.ServerError(w, err)
+		m.App.Session.Put(r.Context(), "error", "can't insert reservation into db")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -149,7 +162,8 @@ func (m *Repository) PostReservation(w http.ResponseWriter, r *http.Request) {
 
 	err = m.DB.InsertRoomRestriction(restriction)
 	if err != nil {
-		helpers.ServerError(w, err)
+		m.App.Session.Put(r.Context(), "error", "can't insert room restriction")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -235,6 +249,20 @@ type jsonResponse struct {
 
 // handles request for availability and sends JSON response
 func (m *Repository) AvailabilityJSON(w http.ResponseWriter, r *http.Request) {
+	// need to parse request body to be able to write a test for it
+	err := r.ParseForm()
+	if err != nil {
+		// can't parse form, so return appropriate JSON
+		resp := jsonResponse{
+			OK:      false,
+			Message: "Internal server error",
+		}
+
+		out, _ := json.MarshalIndent(resp, "", "     ")
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(out)
+		return
+	}
 
 	sd := r.Form.Get("start")
 	ed := r.Form.Get("end")
@@ -246,21 +274,31 @@ func (m *Repository) AvailabilityJSON(w http.ResponseWriter, r *http.Request) {
 	roomID, _ := strconv.Atoi(r.Form.Get("room_id"))
 
 	available, _ := m.DB.SearchAvailabilityByDatesByRoomID(startDate, endDate, roomID)
+	if err != nil {
+		// can't parse form, so return appropriate JSON
+		resp := jsonResponse{
+			OK:      false,
+			Message: "Error connecting to database",
+		}
+
+		out, _ := json.MarshalIndent(resp, "", "     ")
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(out)
+		return
+	}
+
 	// create the struct type in a reusable variable
 	resp := jsonResponse{
-		OK:      available,
-		Message: "",
+		OK:        available,
+		Message:   "",
 		StartDate: sd,
-		EndDate: ed,
-		RoomID: strconv.Itoa(roomID),
+		EndDate:   ed,
+		RoomID:    strconv.Itoa(roomID),
 	}
 
 	// marshall the resp into json
-	out, err := json.MarshalIndent(resp, "", "     ")
-	if err != nil {
-		helpers.ServerError(w, err)
-		return
-	}
+	out, _ := json.MarshalIndent(resp, "", "     ")
+	// don't need an error check, since we handle all aspects of the JSON already
 
 	// write the result as application/json to the web browser
 	w.Header().Set("Content-Type", "application/json")
@@ -303,9 +341,13 @@ func (m *Repository) ReservationSummary(w http.ResponseWriter, r *http.Request) 
 
 // displays list of available rooms
 func (m *Repository) ChooseRoom(w http.ResponseWriter, r *http.Request) {
-	roomID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	// changed to this, so we can test it more easily
+	// split the URL up by /, and grab the 3rd element
+	exploded := strings.Split(r.RequestURI, "/")
+	roomID, err := strconv.Atoi(exploded[2])
 	if err != nil {
-		helpers.ServerError(w, err)
+		m.App.Session.Put(r.Context(), "error", "missing url parameter")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -325,7 +367,7 @@ func (m *Repository) ChooseRoom(w http.ResponseWriter, r *http.Request) {
 // takes url parameters, builds session variable, and takes user to make res screen
 func (m *Repository) BookRoom(w http.ResponseWriter, r *http.Request) {
 	// get the query parameters from the incoming request
-	roomID, _ := strconv.Atoi(r.URL.Query().Get("id")) 	// need to convert id from string to an int
+	roomID, _ := strconv.Atoi(r.URL.Query().Get("id")) // need to convert id from string to an int
 	sd := r.URL.Query().Get("s")
 	ed := r.URL.Query().Get("e")
 
@@ -342,7 +384,7 @@ func (m *Repository) BookRoom(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res.Room.RoomName = room.RoomName
-	res.RoomID = roomID 
+	res.RoomID = roomID
 	res.StartDate = startDate
 	res.EndDate = endDate
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"testing"
 	"time"
 
 	"github.com/alexedwards/scs/v2"
@@ -25,7 +26,7 @@ var session *scs.SessionManager
 var pathToTemplates = "./../../templates"
 var functions = template.FuncMap{}
 
-func getRoutes() http.Handler {
+func TestMain(m *testing.M) {
 	// what I am going to put in the session
 	gob.Register(models.Reservation{})
 
@@ -57,12 +58,17 @@ func getRoutes() http.Handler {
 	app.TemplateCache = tc
 	app.UseCache = true
 
-	repo := NewRepo(&app)
+	repo := NewTestRepo(&app)
 	NewHandlers(repo)
 
 	// gives the render component of our app access to the app config variable
 	render.NewRenderer(&app)
 
+	os.Exit(m.Run())
+}
+
+func getRoutes() http.Handler {
+	
 	mux := chi.NewRouter()
 
 	// middleware allows you process a request as it comes into your web app and perform some action on it

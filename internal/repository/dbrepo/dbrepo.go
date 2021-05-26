@@ -13,10 +13,21 @@ type postgresDBRepo struct {
 	DB *sql.DB
 }
 
+type testDBRepo struct {
+	App *config.AppConfig
+	DB *sql.DB
+}
+
 // we pass this function our connection pool and app config, and return a repository
 func NewPostgresRepo(conn *sql.DB, a *config.AppConfig) repository.DatabaseRepo {
 	return &postgresDBRepo{
 		App: a,
 		DB: conn,
+	}
+}
+
+func NewTestingRepo(a *config.AppConfig) repository.DatabaseRepo {
+	return &testDBRepo{
+		App: a,
 	}
 }
