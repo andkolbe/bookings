@@ -1,6 +1,6 @@
 function Prompt() {
     let toast = function (c) {
-        const{
+        const {
             msg = '',
             icon = 'success',
             position = 'top-end',
@@ -81,12 +81,6 @@ function Prompt() {
                 if (c.didOpen !== undefined) {
                     c.didOpen()
                 }
-            },
-            preConfirm: () => {
-                return [
-                    document.getElementById('start').value,
-                    document.getElementById('end').value
-                ]
             }
         })
         // if a result comes back after someone clicks on the dialogue box

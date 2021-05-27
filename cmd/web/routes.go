@@ -9,9 +9,8 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-
 func routes(app *config.AppConfig) http.Handler {
-	
+
 	mux := chi.NewRouter()
 
 	// middleware allows you process a request as it comes into your web app and perform some action on it
@@ -40,8 +39,18 @@ func routes(app *config.AppConfig) http.Handler {
 	mux.Get("/user/logout", handlers.Repo.Logout)
 
 	mux.Route("/admin", func(mux chi.Router) {
-		mux.Use(Auth)
+		// mux.Use(Auth)
 		mux.Get("/dashboard", handlers.Repo.AdminDashboard)
+
+		mux.Get("/reservations-new", handlers.Repo.AdminNewReservations)
+		mux.Get("/reservations-all", handlers.Repo.AdminAllReservations)
+		mux.Get("/reservations-calendar", handlers.Repo.AdminReservationsCalendar)
+		mux.Post("/reservations-calendar", handlers.Repo.AdminPostReservationsCalendar)
+		mux.Get("/process-reservation/{src}/{id}/do", handlers.Repo.AdminProcessReservation)
+		mux.Delete("/delete-reservation/{src}/{id}/do", handlers.Repo.AdminDeleteReservation)
+
+		mux.Get("/reservations/{src}/{id}/show", handlers.Repo.AdminShowReservation)
+		mux.Post("/reservations/{src}/{id}", handlers.Repo.AdminPostShowReservation)
 	})
 
 	// create a file server - a place to get static files from

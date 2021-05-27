@@ -24,11 +24,20 @@ import (
 var app config.AppConfig // holds app configuration
 var session *scs.SessionManager
 var pathToTemplates = "./../../templates"
-var functions = template.FuncMap{}
+var functions = template.FuncMap{
+	"humanDate":  render.HumanDate,
+	"formatDate": render.FormatDate,
+	"iterate":    render.Iterate,
+	"add":        render.Add,
+}
 
 func TestMain(m *testing.M) {
 	// what I am going to put in the session
 	gob.Register(models.Reservation{})
+	gob.Register(models.User{})
+	gob.Register(models.Room{})
+	gob.Register(models.Restriction{})
+	gob.Register(map[string]int{})
 
 	// change this to true when in production
 	app.InProduction = false
@@ -77,13 +86,13 @@ func listenForMail() {
 	// same as what we do in our live app but we skip the sending of mail
 	go func() {
 		for {
-			_ = <- app.MailChan
+			_ = <-app.MailChan
 		}
 	}()
 }
 
 func getRoutes() http.Handler {
-	
+
 	mux := chi.NewRouter()
 
 	// middleware allows you process a request as it comes into your web app and perform some action on it
@@ -105,12 +114,28 @@ func getRoutes() http.Handler {
 	mux.Post("/search-availability", Repo.PostAvailability)
 	mux.Post("/search-availability-json", Repo.AvailabilityJSON)
 
+	mux.Get("/user/login", Repo.ShowLogin)
+	mux.Post("/user/login", Repo.PostShowLogin)
+	mux.Get("/user/logout", Repo.Logout)
+
+	mux.Get("/dashboard", Repo.AdminDashboard)
+
+	mux.Get("/reservations-new", Repo.AdminNewReservations)
+	mux.Get("/reservations-all", Repo.AdminAllReservations)
+	mux.Get("/reservations-calendar", Repo.AdminReservationsCalendar)
+	mux.Post("/reservations-calendar", Repo.AdminPostReservationsCalendar)
+	mux.Get("/process-reservation/{src}/{id}/do", Repo.AdminProcessReservation)
+	mux.Delete("/delete-reservation/{src}/{id}/do", Repo.AdminDeleteReservation)
+
+	mux.Get("/reservations/{src}/{id}/show", Repo.AdminShowReservation)
+	mux.Post("/reservations/{src}/{id}", Repo.AdminPostShowReservation)
+
 	// create a file server - a place to get static files from
 	fileServer := http.FileServer(http.Dir("./static/"))
 	mux.Handle("/static/*", http.StripPrefix("/static", fileServer))
 
 	return mux
-	
+
 }
 
 // adds CSRF protection to all POST requests
@@ -119,8 +144,8 @@ func NoSurf(next http.Handler) http.Handler {
 
 	csrfHandler.SetBaseCookie(http.Cookie{
 		HttpOnly: true,
-		Path: "/",
-		Secure: app.InProduction,
+		Path:     "/",
+		Secure:   app.InProduction,
 		SameSite: http.SameSiteLaxMode,
 	})
 	return csrfHandler

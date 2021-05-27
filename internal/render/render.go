@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/andkolbe/bookings/internal/config"
 	"github.com/andkolbe/bookings/internal/models"
@@ -15,14 +16,43 @@ import (
 
 // a FuncMap is a map of functions that can be used in a template
 // Go allows us to create our own functions and pass them to the template
-var functions = template.FuncMap{}
+var functions = template.FuncMap{
+	"humanDate": HumanDate,
+	"formatDate": FormatDate,
+	"iterate": Iterate,
+	"add": Add,
+}
 
 var app *config.AppConfig
 var pathToTemplates = "./templates"
 
+func Add(a, b int) int {
+	return a + b
+}
+
+// function that allows a user to iterate between two dates on the calendar
+// returns a slice of ints, starting at 1, and going to count
+func Iterate(count int) []int {
+	var i int
+	var items []int
+	for i = 0; i < count; i++ {
+		items = append(items, i)
+	}
+	return items
+}
+
 // sets the config for the template package
 func NewRenderer(a *config.AppConfig) {
 	app = a
+}
+
+// returns time in YYYY-MM-DD format to use in our templates
+func HumanDate(t time.Time) string {
+	return t.Format("2006-01-02")
+}
+
+func FormatDate(t time.Time, f string) string {
+	return t.Format(f)
 }
 
 func AddDefaultData(td *models.TemplateData, r *http.Request) *models.TemplateData {
